@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+@import 'uplot/dist/uPlot.min.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  @apply bg-neutral-100 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+.theme-toggle-icon {
+  display: inline-block;
+  transition:
+    transform 300ms ease,
+    opacity 200ms ease;
+}
+.theme-toggle-icon-enter-from {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+}
+.theme-toggle-icon-enter-to {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+.theme-toggle-icon-leave-from {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+.theme-toggle-icon-leave-to {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.6);
+}
+.theme-toggle-icon-enter-active,
+.theme-toggle-icon-leave-active {
+  transition:
+    transform 300ms ease,
+    opacity 200ms ease;
+}
