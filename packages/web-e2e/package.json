@@ -1,0 +1,28 @@
+{
+  "name": "@takehomeviz/web-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright E2E tests for @takehomeviz/web",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "echo 'e2e tests: run pnpm --filter @takehomeviz/web-e2e e2e (requires browsers)' && exit 0",
+    "test:coverage": "echo 'e2e tests: no coverage' && exit 0",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint tests",
+    "lint:fix": "eslint tests --fix",
+    "fmt": "prettier --check \"tests/**/*.ts\" \"*.ts\"",
+    "fmt:fix": "prettier --write \"tests/**/*.ts\" \"*.ts\"",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:install": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.48.0",
+    "@takehomeviz/web": "workspace:*",
+    "@types/node": "^22.10.0",
+    "lz-string": "^1.5.0",
+    "typescript": "^6.0.3"
+  }
+}
