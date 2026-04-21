@@ -115,10 +115,30 @@ export function usScenario(overrides: Partial<E2EScenario> = {}): E2EScenario {
  * Collect console errors from a page. Returns a live-mutated array — assert
  * `toEqual([])` at end of a test.
  */
+// Hosts whose resource-load failures should not fail app tests. The
+// countries-browser library lazy-fetches per-subregion city JSONs from
+// jsdelivr, and its dataset legitimately lacks some GB subregions / US
+// territories — those 404s are expected and outside our control.
+const IGNORED_RESOURCE_HOSTS = ['cdn.jsdelivr.net'];
+
 export function collectConsoleErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(msg.text());
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    if (text.startsWith('Failed to load resource')) {
+      // Resource-load errors carry the failing URL in msg.location().url.
+      // Only ignore ones from known third-party hosts; any other 404
+      // (e.g. one of our own assets) should still fail the test.
+      const url = msg.location()?.url ?? '';
+      try {
+        const host = new URL(url).hostname;
+        if (IGNORED_RESOURCE_HOSTS.includes(host)) return;
+      } catch {
+        // Fall through — unparseable URL, treat as a real error.
+      }
+    }
+    errors.push(text);
   });
   page.on('pageerror', (err) => {
     errors.push(err.message);
