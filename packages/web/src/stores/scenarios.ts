@@ -259,14 +259,20 @@ export const useScenariosStore = defineStore('scenarios', () => {
       minDisplay = Math.max(0, cr.minMajor);
       maxDisplay = Math.max(minDisplay + 1, cr.maxMajor);
     } else {
-      let m = 0;
+      let lo = Infinity;
+      let hi = 0;
       for (const s of sc) {
         const money = moneyFromMajor(s.grossMajor, s.currency);
         const d = moneyToDisplay(money, fxCfg);
-        if (d > m) m = d;
+        if (d < lo) lo = d;
+        if (d > hi) hi = d;
       }
-      if (m <= 0) m = 100_000;
-      maxDisplay = m * 1.5;
+      if (!Number.isFinite(lo) || hi <= 0) {
+        lo = 0;
+        hi = 100_000;
+      }
+      minDisplay = Math.max(0, lo * 0.9);
+      maxDisplay = Math.max(minDisplay + 1, hi * 1.1);
     }
     const span = maxDisplay - minDisplay;
     let step = niceStep(span);

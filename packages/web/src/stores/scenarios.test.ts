@@ -419,13 +419,18 @@ describe('derived: engineScenarios / breakdowns / sweepSeries', () => {
     expect(xs[xs.length - 1]!).toBeLessThanOrEqual(50_000);
   });
 
-  it('sweepSeries auto-scales to 1.5x max grossMajor when range unset', () => {
+  it('sweepSeries auto-scales to [0.9x min, 1.1x max] grossMajor when range unset', () => {
     const store = useScenariosStore();
-    store.scenarios = [{ regionId: 'uk-eng', year: 2026, grossMajor: 100_000, currency: 'GBP' }];
+    store.scenarios = [
+      { regionId: 'uk-eng', year: 2026, grossMajor: 80_000, currency: 'GBP' },
+      { regionId: 'uk-eng', year: 2026, grossMajor: 120_000, currency: 'GBP' },
+    ];
     store.setChartRange(null);
     const { xs } = store.sweepSeries;
-    expect(xs[xs.length - 1]!).toBeLessThanOrEqual(150_000 + 1);
-    expect(xs[xs.length - 1]!).toBeGreaterThan(100_000);
+    expect(xs[0]!).toBeGreaterThanOrEqual(80_000 * 0.9 - 1);
+    expect(xs[0]!).toBeLessThan(80_000);
+    expect(xs[xs.length - 1]!).toBeLessThanOrEqual(120_000 * 1.1 + 1);
+    expect(xs[xs.length - 1]!).toBeGreaterThan(120_000);
   });
 
   it('sweepSeries handles all-zero gross without crashing', () => {
