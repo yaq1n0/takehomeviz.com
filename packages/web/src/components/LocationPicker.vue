@@ -26,7 +26,11 @@ const cityCache = new Map<string, Promise<ICity[]>>();
 function loadCities(countryCode: string): Promise<ICity[]> {
   const existing = cityCache.get(countryCode);
   if (existing) return existing;
-  const p = getAllCitiesOfCountry(countryCode);
+  // @countrystatecity/countries-browser@1.0.0 ships a states list per country
+  // but is missing the corresponding per-subdivision city JSON files for some
+  // countries (e.g. GB), so getAllCitiesOfCountry rejects with 404s. Swallow
+  // those and degrade to an empty list rather than bubbling up.
+  const p = getAllCitiesOfCountry(countryCode).catch(() => [] as ICity[]);
   cityCache.set(countryCode, p);
   return p;
 }
