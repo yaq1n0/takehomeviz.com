@@ -107,9 +107,7 @@ const filteredCities = computed(() => {
 const cityOverCap = computed(() => {
   const q = debouncedCityQuery.value.trim().toLowerCase();
   if (!q) return cities.value.length > MAX_RESULTS;
-  return (
-    cities.value.filter((c) => c.name.toLowerCase().includes(q)).length > MAX_RESULTS
-  );
+  return cities.value.filter((c) => c.name.toLowerCase().includes(q)).length > MAX_RESULTS;
 });
 
 function pickCountry(c: ICountry): void {
@@ -232,7 +230,12 @@ function onCityBlur(): void {
           aria-autocomplete="list"
           :aria-expanded="countryOpen"
           aria-controls="location-country-listbox"
-          @input="(e) => { countryQuery = (e.target as HTMLInputElement).value; countryOpen = true; }"
+          @input="
+            (e) => {
+              countryQuery = (e.target as HTMLInputElement).value;
+              countryOpen = true;
+            }
+          "
           @focus="countryOpen = true"
           @blur="onCountryBlur"
           @keydown="onCountryKey"
@@ -255,8 +258,8 @@ function onCityBlur(): void {
       >
         <li
           v-for="(c, i) in filteredCountries"
-          :key="c.iso2"
           :id="`location-country-opt-${i}`"
+          :key="c.iso2"
           role="option"
           :aria-selected="i === countryHighlight"
           class="px-2 py-1.5 cursor-pointer flex items-center gap-2"
@@ -286,14 +289,21 @@ function onCityBlur(): void {
       >
         <input
           class="flex-1 bg-transparent focus:outline-none text-sm text-neutral-900 dark:text-neutral-100 min-w-0"
-          :placeholder="selectedCountry ? (citiesLoading ? 'Loading…' : 'City') : 'Pick country first'"
+          :placeholder="
+            selectedCountry ? (citiesLoading ? 'Loading…' : 'City') : 'Pick country first'
+          "
           :value="cityQuery"
           :disabled="!selectedCountry"
           role="combobox"
           aria-autocomplete="list"
           :aria-expanded="cityOpen"
           aria-controls="location-city-listbox"
-          @input="(e) => { cityQuery = (e.target as HTMLInputElement).value; cityOpen = true; }"
+          @input="
+            (e) => {
+              cityQuery = (e.target as HTMLInputElement).value;
+              cityOpen = true;
+            }
+          "
           @focus="cityOpen = true"
           @blur="onCityBlur"
           @keydown="onCityKey"

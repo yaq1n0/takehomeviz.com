@@ -5,7 +5,5 @@ function numbeoSlug(s: string): string {
 }
 
 export function numbeoUrlFor(loc: Location): string {
-  return `https://www.numbeo.com/cost-of-living/in/${encodeURIComponent(
-    numbeoSlug(loc.cityName),
-  )}`;
+  return `https://www.numbeo.com/cost-of-living/in/${encodeURIComponent(numbeoSlug(loc.cityName))}`;
 }

@@ -1,9 +1,6 @@
 import type { RegionId } from '@takehomeviz/engine';
 
-export function regionFromLocation(
-  countryCode: string,
-  stateCode?: string,
-): RegionId | null {
+export function regionFromLocation(countryCode: string, stateCode?: string): RegionId | null {
   if (countryCode === 'GB') return 'uk-eng';
   if (countryCode === 'US') {
     switch (stateCode) {

@@ -3,9 +3,9 @@ import { numbeoUrlFor } from './numbeoUrl';
 
 describe('numbeoUrlFor', () => {
   it('uses city name only', () => {
-    expect(numbeoUrlFor({ countryCode: 'GB', countryName: 'United Kingdom', cityName: 'London' })).toBe(
-      'https://www.numbeo.com/cost-of-living/in/London',
-    );
+    expect(
+      numbeoUrlFor({ countryCode: 'GB', countryName: 'United Kingdom', cityName: 'London' }),
+    ).toBe('https://www.numbeo.com/cost-of-living/in/London');
   });
 
   it('replaces multi-space runs with single dashes and trims', () => {
