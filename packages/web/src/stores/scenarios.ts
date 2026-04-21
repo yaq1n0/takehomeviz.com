@@ -253,7 +253,7 @@ export const useScenariosStore = defineStore('scenarios', () => {
     if (sc.length === 0) return { xs: [], series: [] as Array<Array<number | null>> };
     const fxCfg = fxConfig.value;
     const cr = chartRange.value;
-    let minDisplay = 0;
+    let minDisplay: number;
     let maxDisplay: number;
     if (cr) {
       minDisplay = Math.max(0, cr.minMajor);
