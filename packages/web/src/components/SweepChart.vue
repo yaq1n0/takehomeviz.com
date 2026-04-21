@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import uPlot from 'uplot';
 import type { Options, AlignedData } from 'uplot';
 import { useScenariosStore } from '../stores/scenarios';
@@ -65,10 +65,16 @@ const currentPoints = computed(() => {
 
 const legendChips = computed(() =>
   store.scenarios.map((s, i) => ({
-    label: s.name ?? s.regionId,
+    label: `${i + 1}. ${s.name ?? s.regionId}`,
     color: colorFor(i),
   })),
 );
+
+function scenarioLabel(i: number): string {
+  const s = store.scenarios[i];
+  if (!s) return `#${i + 1}`;
+  return `${i + 1}. ${s.name ?? s.regionId}`;
+}
 
 // Dual-slider range selector.
 // Stops: 0-100k in 10k increments, then 100k-1M in 100k increments.
@@ -157,7 +163,7 @@ function buildOpts(width: number, height: number): Options {
   const tickLabel = dark ? '#94a3b8' : '#64748b';
 
   const seriesDefs = store.scenarios.map((s, i) => ({
-    label: s.name ?? `#${i + 1} ${s.regionId}`,
+    label: `${i + 1}. ${s.name ?? s.regionId}`,
     stroke: colorFor(i),
     width: 2,
     points: { show: false },
@@ -225,11 +231,11 @@ function buildOpts(width: number, height: number): Options {
             ctx.stroke();
             if (idx < 6) {
               ctx.fillStyle = crossoverLabelFill;
-              ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+              ctx.font = '14px ui-sans-serif, system-ui, sans-serif';
               ctx.fillText(
-                `#${x.a + 1}×#${x.b + 1} @ ${formatCompact(x.gross, displayCurrency)}`,
-                cx + 10,
-                cy - 6,
+                `${scenarioLabel(x.a)} × ${scenarioLabel(x.b)} @ ${formatCompact(x.gross, displayCurrency)}`,
+                cx + 12,
+                cy - 8,
               );
             }
           });
@@ -243,7 +249,7 @@ function buildOpts(width: number, height: number): Options {
 function mount(): void {
   if (!container.value) return;
   const rect = container.value.getBoundingClientRect();
-  const opts = buildOpts(Math.max(300, Math.floor(rect.width)), 320);
+  const opts = buildOpts(Math.max(300, Math.floor(rect.width)), chartHeight());
   plot.value = new uPlot(opts, data.value, container.value);
 }
 
@@ -255,15 +261,47 @@ function remount(): void {
   mount();
 }
 
+const isFullscreen = ref(false);
+
+function chartHeight(): number {
+  if (!isFullscreen.value) return 320;
+  if (typeof window === 'undefined') return 320;
+  // Leave room for the card's toolbar, caption, and crossover list.
+  return Math.max(320, Math.floor(window.innerHeight - 360));
+}
+
 function resize(): void {
   if (!container.value || !plot.value) return;
   const rect = container.value.getBoundingClientRect();
-  plot.value.setSize({ width: Math.max(300, Math.floor(rect.width)), height: 320 });
+  plot.value.setSize({
+    width: Math.max(300, Math.floor(rect.width)),
+    height: chartHeight(),
+  });
 }
+
+async function toggleFullscreen(): Promise<void> {
+  isFullscreen.value = !isFullscreen.value;
+  await nextTick();
+  requestAnimationFrame(() => resize());
+}
+
+function onKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && isFullscreen.value) {
+    isFullscreen.value = false;
+    nextTick(() => requestAnimationFrame(() => resize()));
+  }
+}
+
+// Lock body scroll while fullscreen so the teleported overlay is the only scroll context.
+watch(isFullscreen, (v) => {
+  if (typeof document === 'undefined') return;
+  document.body.style.overflow = v ? 'hidden' : '';
+});
 
 onMounted(() => {
   mount();
   window.addEventListener('resize', resize);
+  window.addEventListener('keydown', onKeydown);
   if (typeof document !== 'undefined') {
     themeObserver = new MutationObserver(() => {
       const nextDark = document.documentElement.classList.contains('dark');
@@ -278,6 +316,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resize);
+  window.removeEventListener('keydown', onKeydown);
+  if (typeof document !== 'undefined') document.body.style.overflow = '';
   plot.value?.destroy();
   plot.value = null;
   themeObserver?.disconnect();
@@ -310,7 +350,7 @@ watch(
 
 const crossoverList = computed(() =>
   crossovers.value.map((c) => ({
-    pair: `#${c.a + 1} × #${c.b + 1}`,
+    pair: `${scenarioLabel(c.a)} × ${scenarioLabel(c.b)}`,
     at: formatNumber(c.gross, store.displayCurrency),
     spend: formatNumber(c.spendable, store.displayCurrency),
   })),
@@ -320,108 +360,131 @@ const symbol = computed(() => currencySymbol(store.displayCurrency));
 </script>
 
 <template>
-  <div
-    class="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950"
-  >
-    <!-- Toolbar -->
-    <div class="mb-4 space-y-2">
-      <div>
-        <h2 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          Spending power across gross range
-        </h2>
-        <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-          Monthly after expenses, in primary currency ({{ symbol }})
-        </p>
-      </div>
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-        <span
-          v-for="(chip, i) in legendChips"
-          :key="i"
-          class="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300"
-        >
+  <Teleport to="body" :disabled="!isFullscreen">
+    <div
+      :class="
+        isFullscreen
+          ? 'fixed left-0 top-0 z-[100] h-screen w-screen overflow-auto bg-white p-4 dark:bg-neutral-950 sm:p-6'
+          : 'relative rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950'
+      "
+      data-testid="chart-card"
+    >
+      <!-- Fullscreen toggle -->
+      <button
+        type="button"
+        class="absolute right-3 top-3 z-10 rounded p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+        :title="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'"
+        :aria-label="isFullscreen ? 'Exit fullscreen chart' : 'Enter fullscreen chart'"
+        data-testid="chart-fullscreen-toggle"
+        @click="toggleFullscreen"
+      >
+        <FontAwesomeIcon :icon="isFullscreen ? 'compress' : 'expand'" class="text-[13px]" />
+      </button>
+
+      <!-- Toolbar -->
+      <div class="mb-4 space-y-3 text-center">
+        <div>
+          <h2 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            Spending power across gross range
+          </h2>
+          <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+            Monthly after expenses, in primary currency ({{ symbol }})
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
           <span
-            class="inline-block h-2 w-2 rounded-full"
-            :style="{ backgroundColor: chip.color }"
-          />
-          <span>{{ chip.label }}</span>
-        </span>
-      </div>
-      <div>
-        <div class="flex items-center gap-2 text-xs">
-          <span
-            class="tabular-nums font-mono w-14 text-right text-neutral-600 dark:text-neutral-300"
-            >{{ minLabel }}</span
+            v-for="(chip, i) in legendChips"
+            :key="i"
+            class="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300"
           >
-          <div class="dual-range relative h-5 w-44">
-            <div
-              class="pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-neutral-200 dark:bg-neutral-800"
+            <span
+              class="inline-block h-2 w-2 rounded-full"
+              :style="{ backgroundColor: chip.color }"
             />
-            <div
-              class="pointer-events-none absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-blue-500"
-              :style="fillStyle"
-            />
-            <input
-              type="range"
-              min="0"
-              :max="MAX_IDX"
-              step="1"
-              :value="minIdx"
-              :aria-label="`Chart range minimum (${minLabel})`"
-              @input="onMinSlide"
-            />
-            <input
-              type="range"
-              min="0"
-              :max="MAX_IDX"
-              step="1"
-              :value="maxIdx"
-              :aria-label="`Chart range maximum (${maxLabel})`"
-              @input="onMaxSlide"
-            />
+            <span>{{ chip.label }}</span>
+          </span>
+        </div>
+        <div class="flex justify-center">
+          <div
+            class="flex w-full max-w-md items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs sm:gap-3 dark:border-neutral-800 dark:bg-neutral-900"
+          >
+            <span
+              class="tabular-nums font-mono shrink-0 text-right text-neutral-600 dark:text-neutral-300"
+              >{{ minLabel }}</span
+            >
+            <div class="dual-range relative h-5 min-w-0 flex-1">
+              <div
+                class="pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-neutral-200 dark:bg-neutral-800"
+              />
+              <div
+                class="pointer-events-none absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-blue-500"
+                :style="fillStyle"
+              />
+              <input
+                type="range"
+                min="0"
+                :max="MAX_IDX"
+                step="1"
+                :value="minIdx"
+                :aria-label="`Chart range minimum (${minLabel})`"
+                @input="onMinSlide"
+              />
+              <input
+                type="range"
+                min="0"
+                :max="MAX_IDX"
+                step="1"
+                :value="maxIdx"
+                :aria-label="`Chart range maximum (${maxLabel})`"
+                @input="onMaxSlide"
+              />
+            </div>
+            <span
+              class="tabular-nums font-mono shrink-0 text-left text-neutral-600 dark:text-neutral-300"
+              >{{ maxLabel }}</span
+            >
+            <button
+              type="button"
+              class="ml-0.5 text-neutral-500 transition-colors hover:text-neutral-700 disabled:opacity-40 disabled:hover:text-neutral-500 dark:text-neutral-400 dark:hover:text-neutral-200"
+              :disabled="isAuto"
+              title="Reset to auto"
+              aria-label="Reset chart range to auto"
+              @click="resetRange"
+            >
+              <FontAwesomeIcon icon="rotate-left" class="text-[11px]" />
+            </button>
           </div>
-          <span
-            class="tabular-nums font-mono w-14 text-left text-neutral-600 dark:text-neutral-300"
-            >{{ maxLabel }}</span
-          >
-          <button
-            type="button"
-            class="ml-0.5 text-neutral-500 transition-colors hover:text-neutral-700 disabled:opacity-40 disabled:hover:text-neutral-500 dark:text-neutral-400 dark:hover:text-neutral-200"
-            :disabled="isAuto"
-            title="Reset to auto"
-            aria-label="Reset chart range to auto"
-            @click="resetRange"
-          >
-            <FontAwesomeIcon icon="rotate-left" class="text-[11px]" />
-          </button>
         </div>
       </div>
+
+      <!-- Chart -->
+      <div ref="container" class="w-full min-h-[320px]" />
+
+      <!-- Caption -->
+      <p class="mt-3 text-center font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
+        x-axis locked to {{ symbol }} · hover a line to see per-scenario gross in native currency
+      </p>
+
+      <!-- Crossover list -->
+      <div v-if="crossoverList.length" class="mt-3 text-xs">
+        <h3 class="mb-1 text-center font-medium text-neutral-600 dark:text-neutral-300">
+          Crossovers
+        </h3>
+        <ul class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
+          <li
+            v-for="(c, i) in crossoverList"
+            :key="i"
+            class="rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-center text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
+          >
+            <span class="font-medium">{{ c.pair }}</span> meet at gross
+            <span class="tabular-nums font-mono">{{ c.at }}</span>
+            (spendable <span class="tabular-nums font-mono">{{ c.spend }}</span
+            >)
+          </li>
+        </ul>
+      </div>
     </div>
-
-    <!-- Chart -->
-    <div ref="container" class="w-full min-h-[320px]" />
-
-    <!-- Caption -->
-    <p class="mt-3 font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
-      x-axis locked to {{ symbol }} · hover a line to see per-scenario gross in native currency
-    </p>
-
-    <!-- Crossover list -->
-    <div v-if="crossoverList.length" class="mt-3 text-xs">
-      <h3 class="mb-1 font-medium text-neutral-600 dark:text-neutral-300">Crossovers</h3>
-      <ul class="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-        <li
-          v-for="(c, i) in crossoverList"
-          :key="i"
-          class="rounded border border-neutral-200 bg-neutral-50 px-2 py-1 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200"
-        >
-          <span class="font-medium">{{ c.pair }}</span> meet at gross
-          <span class="tabular-nums font-mono">{{ c.at }}</span>
-          (spendable <span class="tabular-nums font-mono">{{ c.spend }}</span
-          >)
-        </li>
-      </ul>
-    </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>

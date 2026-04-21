@@ -9,6 +9,7 @@
 export const testIds = {
   appHeader: 'app-header',
   breakdownTable: 'breakdown-table',
+  chartFullscreenToggle: 'chart-fullscreen-toggle',
 } as const;
 
 export type TestId = (typeof testIds)[keyof typeof testIds];

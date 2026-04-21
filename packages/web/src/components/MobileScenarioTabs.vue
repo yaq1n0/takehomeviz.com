@@ -11,7 +11,7 @@ const canAdd = computed(() => store.scenarios.length < MAX_SCENARIOS);
 function labelFor(index: number): string {
   const s = store.scenarios[index];
   if (!s) return '';
-  return s.name ?? s.regionId;
+  return `${index + 1}. ${s.name ?? s.regionId}`;
 }
 </script>
 

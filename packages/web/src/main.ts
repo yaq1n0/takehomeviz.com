@@ -20,6 +20,8 @@ import {
   faMoon,
   faCode,
   faEnvelope,
+  faExpand,
+  faCompress,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -38,6 +40,8 @@ library.add(
   faMoon,
   faCode,
   faEnvelope,
+  faExpand,
+  faCompress,
 );
 
 initTheme();
